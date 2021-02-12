@@ -2,6 +2,7 @@ from typing import Optional
 from pydantic import BaseModel, validator
 
 from app.config import LINK_CHARS, LINK_LENGTH
+from app.validators import URLValidator
 
 
 class Link(BaseModel):
@@ -21,3 +22,8 @@ class Link(BaseModel):
             raise ValueError("chars")
 
         return v
+
+    @validator("url")
+    def validate_url(cls, v) -> str:
+        validator = URLValidator()
+        return validator(v)
