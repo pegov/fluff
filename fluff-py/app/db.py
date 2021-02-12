@@ -32,7 +32,8 @@ class DB:
 
     async def set_link(self, key: str, url: str, expire: int = EXPIRE) -> bool:
         res = await self.redis.setnx(key, url)
-        asyncio.create_task(self.redis.expire(key, expire))
+        if res:
+            asyncio.create_task(self.redis.expire(key, expire))
         return res
 
     async def is_free(self, key: str) -> bool:
