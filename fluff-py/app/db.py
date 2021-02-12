@@ -1,13 +1,13 @@
-from typing import Optional
 import asyncio
-import aioredis
+from typing import List, Optional
 
-import random
+import aioredis
 
 from app.config import REDIS_URL
 from app.keys import create_random_key
 
 EXPIRE = 60 * 60 * 12
+RESOURCE = 500
 
 lock = asyncio.Lock()
 
@@ -39,10 +39,13 @@ class DB:
         link = await self.redis.get(key)
         return bool(link)
 
-    async def create_initial_keys(self, n: int = 10):
+    async def get_queue(self) -> List[str]:
+        return await self.redis.lrange(QUEUE, 0, -1)
+
+    async def create_initial_keys(self):
         queue = await self.redis.lrange(QUEUE, 0, -1)
-        if len(queue) == 0:
-            for _ in range(n):
+        if len(queue) < RESOURCE:
+            for _ in range(RESOURCE - len(queue)):
                 await self.create_free_key()
 
     async def create_free_key(self) -> str:
@@ -54,9 +57,13 @@ class DB:
                 return key
 
     async def get_free_key(self) -> str:
-        key = await self.redis.rpop(QUEUE)
-        asyncio.create_task(self.create_free_key())
-        return key
+        while True:
+            key = await self.redis.rpop(QUEUE)
+            if key is None:
+                await asyncio.sleep(0.025)
+                continue
+            asyncio.create_task(self.create_free_key())
+            return key
 
 
 db = DB()

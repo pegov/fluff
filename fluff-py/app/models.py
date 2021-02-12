@@ -1,4 +1,5 @@
 from typing import Optional
+
 from pydantic import BaseModel, validator
 
 from app.config import LINK_CHARS, LINK_LENGTH
@@ -7,7 +8,7 @@ from app.validators import URLValidator
 
 class Link(BaseModel):
     url: str
-    key: Optional[str]
+    key: Optional[str] = None
 
     @validator("key")
     def validate_key(cls, v) -> str:

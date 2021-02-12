@@ -1,11 +1,11 @@
 from typing import Optional
+
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from pydantic import ValidationError
 
-from app.models import Link
-
 from app.db import db
+from app.models import Link
 
 api_router = APIRouter()
 
@@ -27,7 +27,7 @@ async def create(*, request: Request):
     if not await db.set_link(link.key, link.url):
         raise HTTPException(400)
 
-    return None
+    return {"key": link.key}
 
 
 router = APIRouter()
