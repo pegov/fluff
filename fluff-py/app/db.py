@@ -27,7 +27,7 @@ class DB:
         async with lock:
             link = await self.redis.get(key)
             if link is not None:
-                await self.redis.expire(key, 0)
+                await self.redis.delete(key)
             return link
 
     async def set_link(self, key: str, url: str, expire: int = EXPIRE) -> bool:
