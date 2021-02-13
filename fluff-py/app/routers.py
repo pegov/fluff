@@ -23,9 +23,12 @@ async def create(*, request: Request):
 
     if link.key is None:
         link.key = await db.get_free_key()
+        custom = True
+    else:
+        custom = False
 
-    if not await db.set_link(link.key, link.url):
-        raise HTTPException(400)
+    if not await db.set_link(link.key, link.url, custom=custom):
+        raise HTTPException(400, "link in use")
 
     return {"key": link.key}
 

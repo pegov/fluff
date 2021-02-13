@@ -1,23 +1,26 @@
 import asyncio
-from typing import List, Optional
+from typing import Optional
+
+from collections import deque
 
 import aioredis
-
 from app.config import REDIS_URL
 from app.keys import create_random_key
 
 EXPIRE = 60 * 60 * 12
-RESOURCE = 500
+RESOURCE = 100
 
 lock = asyncio.Lock()
 
-QUEUE = "queue:free"
-
 
 class DB:
+    queue: deque
+
     async def connect(self) -> None:
         self.redis = await aioredis.create_redis_pool(REDIS_URL, encoding="utf-8")
         await self.redis.ping()
+        self.queue = deque()
+        await self.create_initial_keys()
 
     async def disconnect(self) -> None:
         self.redis.close()
@@ -30,41 +33,36 @@ class DB:
                 await self.redis.delete(key)
             return link
 
-    async def set_link(self, key: str, url: str, expire: int = EXPIRE) -> bool:
+    async def set_link(
+        self, key: str, url: str, expire: int = EXPIRE, custom=False
+    ) -> bool:
         res = await self.redis.setnx(key, url)
         if res:
+            if custom and key in self.queue:
+                self.queue.remove(key)
+                asyncio.create_task(self.create_free_key())
             asyncio.create_task(self.redis.expire(key, expire))
         return res
 
     async def is_free(self, key: str) -> bool:
         link = await self.redis.get(key)
-        return bool(link)
-
-    async def get_queue(self) -> List[str]:
-        return await self.redis.lrange(QUEUE, 0, -1)
+        return not bool(link)
 
     async def create_initial_keys(self):
-        queue = await self.redis.lrange(QUEUE, 0, -1)
-        if len(queue) < RESOURCE:
-            for _ in range(RESOURCE - len(queue)):
-                await self.create_free_key()
+        for _ in range(RESOURCE):
+            await self.create_free_key()
 
     async def create_free_key(self) -> str:
-        queue = await self.redis.lrange(QUEUE, 0, -1)
         while True:
             key = create_random_key()
-            if key not in queue:
-                await self.redis.rpush(QUEUE, key)
+            if key not in self.queue and await self.is_free(key):
+                self.queue.append(key)
                 return key
 
     async def get_free_key(self) -> str:
-        while True:
-            key = await self.redis.rpop(QUEUE)
-            if key is None:
-                await asyncio.sleep(0.025)
-                continue
-            asyncio.create_task(self.create_free_key())
-            return key
+        key = self.queue.popleft()
+        asyncio.create_task(self.create_free_key())
+        return key
 
 
 db = DB()
