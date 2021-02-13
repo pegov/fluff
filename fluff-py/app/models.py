@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel, validator
 
-from app.config import LINK_CHARS, LINK_LENGTH
+from app.config import LINK_CHARS, LINK_MIN_LENGTH, LINK_MAX_LENGTH
 from app.validators import URLValidator
 
 
@@ -16,8 +16,11 @@ class Link(BaseModel):
             return v
 
         v = v.strip()
-        if len(v) < LINK_LENGTH:
-            raise ValueError("length")
+        if len(v) < LINK_MIN_LENGTH:
+            raise ValueError(f"min length {LINK_MIN_LENGTH}")
+
+        if len(v) > LINK_MAX_LENGTH:
+            raise ValueError(f"max length {LINK_MAX_LENGTH}")
 
         if any(c not in LINK_CHARS for c in v):
             raise ValueError("chars")
