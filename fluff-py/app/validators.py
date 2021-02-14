@@ -50,6 +50,6 @@ class URLValidator:
 
         regex_matches = self.regex.search(value)
         if not regex_matches:
-            raise ValueError("not valid")
+            raise ValueError("invalid url")
 
         return value
