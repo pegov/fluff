@@ -1,1 +1,2 @@
-DEBUG=1 poetry run uvicorn "app.main:app" --reload
+#!/bin/bash
+DEBUG=1 poetry run uvicorn "app.main:app"
