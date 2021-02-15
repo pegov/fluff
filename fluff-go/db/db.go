@@ -11,6 +11,17 @@ import (
 	"go.uber.org/zap"
 )
 
+// Getter ...
+type Getter interface {
+	GetLink(string) (string, error)
+}
+
+//Setter ...
+type Setter interface {
+	GetFreeKey() string
+	SetLink(link.Link, bool) bool
+}
+
 // Database ...
 type Database struct {
 	*redis.Client
@@ -38,7 +49,7 @@ func NewDatabase(logger *zap.SugaredLogger) *Database {
 		rdb,
 		logger,
 		list.New(),
-		500,
+		10000,
 		6,
 		time.Hour * 12,
 	}
@@ -144,7 +155,6 @@ func (db *Database) GetFreeKey() string {
 	front := db.queue.Front()
 	defer db.queue.Remove(front)
 	return front.Value.(string)
-
 }
 
 const symbols = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
