@@ -17,7 +17,7 @@ func GetLink(db db.Getter) http.HandlerFunc {
 		}
 		url, err := db.GetLink(key)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
+			http.Error(w, "404 page not found", http.StatusNotFound)
 		}
 		http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 		return
