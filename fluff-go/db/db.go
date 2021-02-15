@@ -49,7 +49,7 @@ func NewDatabase(logger *zap.SugaredLogger) *Database {
 		rdb,
 		logger,
 		list.New(),
-		10000,
+		2500,
 		6,
 		time.Hour * 12,
 	}
