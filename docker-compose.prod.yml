@@ -1,0 +1,5 @@
+version: '3'
+services: 
+  fluff:
+    build: 
+      dockerfile: Dockerfile.prod
