@@ -1,7 +1,6 @@
 package db
 
 import (
-	"container/list"
 	"context"
 	"math/rand"
 	"time"
@@ -18,15 +17,15 @@ type Getter interface {
 
 //Setter ...
 type Setter interface {
-	GetFreeKey() string
-	SetLink(link.Link, bool) bool
+	GetKey() string
+	SetLink(link.Link) bool
 }
 
 // Database ...
 type Database struct {
 	*redis.Client
 	logger            *zap.SugaredLogger
-	queue             *list.List
+	queue             chan string
 	resource          int
 	linkDefaultLen    int
 	defaultExpiration time.Duration
@@ -35,21 +34,24 @@ type Database struct {
 var ctx = context.Background()
 
 // NewDatabase ...
-func NewDatabase(logger *zap.SugaredLogger) *Database {
+func NewDatabase(url string, logger *zap.SugaredLogger) *Database {
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     url,
 		Password: "",
 		DB:       0,
 	})
+	// DEV
+	rdb.FlushAll(ctx)
 	_, err := rdb.Ping(ctx).Result()
 	if err != nil {
 		panic(err)
 	}
+	queue := make(chan string, 0)
 	db := &Database{
 		rdb,
 		logger,
-		list.New(),
-		2500,
+		queue,
+		500,
 		6,
 		time.Hour * 12,
 	}
@@ -67,102 +69,41 @@ func (db *Database) GetLink(key string) (string, error) {
 	return url, nil
 }
 
-func (db *Database) queueContainsValue(value string) bool {
-	if db.queue.Len() == 0 {
-		return false
-	}
-	elem := db.queue.Back()
-	if elem.Value == value {
-		return true
-	}
-	for {
-		elem = elem.Next()
-		if elem == nil {
-			return false
-		}
-		if elem.Value == value {
-			return true
-		}
-	}
-}
-
-func (db *Database) queueRemoveByValue(value string) bool {
-	if db.queue.Len() == 0 {
-		return false
-	}
-	elem := db.queue.Back()
-	if elem.Value == value {
-		db.queue.Remove(elem)
-		return true
-	}
-	for {
-		elem = elem.Next()
-		if elem == nil {
-			return false
-		}
-		if elem.Value == value {
-			db.queue.Remove(elem)
-			return true
-		}
-	}
-}
-
 // SetLink ...
-func (db *Database) SetLink(link link.Link, custom bool) bool {
-	// TODO
+func (db *Database) SetLink(link link.Link) bool {
 	ok, _ := db.SetNX(ctx, link.Key, link.URL, db.defaultExpiration).Result()
-	if ok {
-		var removed bool
-		if custom {
-			removed = db.queueRemoveByValue(link.Key)
-		}
-		if !custom || removed {
-			go db.createFreeKey()
-		}
-	}
 	return ok
 }
 
 func (db *Database) isFree(key string) bool {
-	_, err := db.Get(ctx, key).Result()
-	if err != nil {
-		if err == redis.Nil {
-			return true
-		}
-	}
-	return false
+	err := db.Get(ctx, key).Err()
+	return err == redis.Nil
 }
 
-func (db *Database) createInitialKeys() {
-	for i := 0; i < db.resource; i++ {
-		db.createFreeKey()
-	}
-}
+const symbols = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
 
-func (db *Database) createFreeKey() string {
+func (db *Database) createKey() {
 	b := make([]byte, db.linkDefaultLen)
+	for i := range b {
+		b[i] = symbols[rand.Intn(len(symbols))]
+	}
+	db.queue <- string(b)
+}
+
+// GetKey ...
+func (db *Database) GetKey() string {
+	var key string
 	for {
-		key := createRandomKey(&b)
-		if !db.queueContainsValue(key) && db.isFree(key) {
-			db.queue.PushBack(key)
+		key = <-db.queue
+		go db.createKey()
+		if db.isFree(key) {
 			return key
 		}
 	}
 }
 
-// GetFreeKey ...
-func (db *Database) GetFreeKey() string {
-	front := db.queue.Front()
-	defer db.queue.Remove(front)
-	return front.Value.(string)
-}
-
-const symbols = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
-
-func createRandomKey(b *[]byte) string {
-	for i := range *b {
-		(*b)[i] = symbols[rand.Intn(len(symbols))]
+func (db *Database) createInitialKeys() {
+	for i := 0; i < db.resource; i++ {
+		go db.createKey()
 	}
-	return string(*b)
-
 }
