@@ -1,0 +1,22 @@
+FROM python:3.8
+
+WORKDIR /fluff
+
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+RUN pip install --upgrade pip
+RUN pip install poetry-core==1.0.0 poetry==1.1.4
+
+COPY pyproject.toml ./
+COPY poetry.lock ./
+
+RUN poetry install --no-dev
+
+COPY ./app ./app
+
+ENV PYTHONPATH=./app
+
+COPY ./gunicorn.conf.py ./
+
+CMD ["poetry", "run", "gunicorn", "-k", "uvicorn.workers.UvicornH11Worker", "main:app"]
