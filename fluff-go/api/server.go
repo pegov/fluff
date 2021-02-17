@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// Server ...
 type Server struct {
 	addr   string
 	logger *zap.SugaredLogger
@@ -20,7 +21,7 @@ type Server struct {
 }
 
 // NewServer ...
-func NewServer(addr string) *Server {
+func NewServer(bindAddr string, dbAddr string) *Server {
 	config := zap.NewProductionConfig()
 	config.Development = true
 	config.Level.SetLevel(zapcore.InfoLevel)
@@ -28,24 +29,23 @@ func NewServer(addr string) *Server {
 	defer logger.Sync()
 	sugar := logger.Sugar()
 	return &Server{
-		addr:   addr,
+		addr:   bindAddr,
 		logger: sugar,
 		router: chi.NewRouter(),
-		db:     db.NewDatabase(sugar),
+		db:     db.NewDatabase(dbAddr, sugar),
 	}
 }
 
 // Run ...
 func (s *Server) Run() {
-	s.logger.Info("Adding middlewares...")
+	defer s.db.Close()
+
 	s.router.Use(middleware.Logger)
 	s.router.Use(middleware.Recoverer)
 	s.router.Use(middleware.Timeout(time.Second * 30))
 
-	s.logger.Info("Adding router...")
 	s.router.Get("/{key}", handler.GetLink(s.db))
 	s.router.Post("/api/links", handler.CreateLink(s.db))
-	s.logger.Infof("Listening on addr: %s", s.addr)
+
 	http.ListenAndServe(s.addr, s.router)
-	defer s.db.Close()
 }
