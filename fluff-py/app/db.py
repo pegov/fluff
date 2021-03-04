@@ -1,9 +1,9 @@
 import asyncio
+from collections import deque
 from typing import Optional
 
-from collections import deque
-
 import aioredis
+
 from app.config import REDIS_URL
 from app.keys import create_random_key
 

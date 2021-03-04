@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel, validator
 
-from app.config import LINK_CHARS, LINK_MIN_LENGTH, LINK_MAX_LENGTH
+from app.config import LINK_CHARS, LINK_MAX_LENGTH, LINK_MIN_LENGTH
 from app.validators import URLValidator
 
 
