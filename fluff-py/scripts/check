@@ -5,6 +5,6 @@ export SOURCE_FILES="app"
 
 set -x
 
-${PREFIX} flake8 $SOURCE_FILES --ignore=E501,E722,W503,W605,F401,F403,F405
+${PREFIX} flake8 $SOURCE_FILES --ignore=E501
 ${PREFIX} black --check --diff --target-version=py38 $SOURCE_FILES
 ${PREFIX} mypy $SOURCE_FILES
