@@ -30,7 +30,7 @@ async def create(*, request: Request):
     if not await db.set_link(link.key, link.url, custom=custom):
         raise HTTPException(400, "link in use")
 
-    return {"key": link.key}
+    return {"key": link.key, "url": link.url}
 
 
 router = APIRouter()
