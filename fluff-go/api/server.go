@@ -1,38 +1,42 @@
 package api
 
 import (
+	"log"
 	"net/http"
-	"time"
+	"os"
+	"strings"
 
 	"github.com/NoSoundLeR/fluff/fluff-go/api/handler"
 	"github.com/NoSoundLeR/fluff/fluff-go/db"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 // Server ...
 type Server struct {
 	addr   string
-	logger *zap.SugaredLogger
 	router chi.Router
 	db     *db.Database
 }
 
 // NewServer ...
-func NewServer(bindAddr string, dbAddr string) *Server {
-	config := zap.NewProductionConfig()
-	config.Development = true
-	config.Level.SetLevel(zapcore.InfoLevel)
-	logger, _ := zap.NewProduction()
-	defer logger.Sync()
-	sugar := logger.Sugar()
+func NewServer() *Server {
+	bindAddr, ok := os.LookupEnv("BASE_URL")
+	if !ok {
+		bindAddr = "0.0.0.0:8000"
+	}
+	redisAddr, ok := os.LookupEnv("REDIS_URL")
+	if ok {
+		// redis://127.0.0.1:6379/ -> 127.0.0.1:6379
+		redisAddr = strings.ReplaceAll(redisAddr, "redis://", "")
+		redisAddr = strings.ReplaceAll(redisAddr, "/", "")
+	} else {
+		redisAddr = "127.0.0.1:6379"
+	}
 	return &Server{
 		addr:   bindAddr,
-		logger: sugar,
 		router: chi.NewRouter(),
-		db:     db.NewDatabase(dbAddr, sugar),
+		db:     db.NewDatabase(redisAddr),
 	}
 }
 
@@ -42,10 +46,12 @@ func (s *Server) Run() {
 
 	s.router.Use(middleware.Logger)
 	s.router.Use(middleware.Recoverer)
-	s.router.Use(middleware.Timeout(time.Second * 30))
 
 	s.router.Get("/{key}", handler.GetLink(s.db))
 	s.router.Post("/api/links", handler.CreateLink(s.db))
 
-	http.ListenAndServe(s.addr, s.router)
+	err := http.ListenAndServe(s.addr, s.router)
+	if err != nil {
+		log.Fatal("ListenAndServe", err)
+	}
 }

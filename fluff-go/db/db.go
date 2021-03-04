@@ -7,7 +7,6 @@ import (
 
 	"github.com/NoSoundLeR/fluff/fluff-go/link"
 	"github.com/go-redis/redis/v8"
-	"go.uber.org/zap"
 )
 
 // Getter ...
@@ -24,7 +23,6 @@ type Setter interface {
 // Database ...
 type Database struct {
 	*redis.Client
-	logger            *zap.SugaredLogger
 	queue             chan string
 	resource          int
 	linkDefaultLen    int
@@ -34,7 +32,7 @@ type Database struct {
 var ctx = context.Background()
 
 // NewDatabase ...
-func NewDatabase(url string, logger *zap.SugaredLogger) *Database {
+func NewDatabase(url string) *Database {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     url,
 		Password: "",
@@ -49,7 +47,6 @@ func NewDatabase(url string, logger *zap.SugaredLogger) *Database {
 	queue := make(chan string, 0)
 	db := &Database{
 		rdb,
-		logger,
 		queue,
 		500,
 		6,
