@@ -1,2 +1,0 @@
-#!/bin/bash
-DEBUG=1 poetry run uvicorn "app.main:app"
