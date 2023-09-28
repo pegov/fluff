@@ -1,4 +1,4 @@
-package api
+package handler
 
 import (
 	"encoding/json"
@@ -94,5 +94,20 @@ func DeleteLink(repo *db.LinkRepo) gin.HandlerFunc {
 		repo.DeleteByShort(short)
 
 		c.Status(200)
+	}
+}
+
+func RedirectToLink(repo *db.LinkRepo) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		short := c.Param("short")
+		link, err := repo.GetByShort(short)
+		if link == nil && err == nil {
+			c.AbortWithStatus(404)
+		} else if err != nil {
+			log.Println(err)
+			c.AbortWithError(500, err)
+		}
+
+		c.Redirect(301, link.Long)
 	}
 }

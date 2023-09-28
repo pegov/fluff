@@ -8,8 +8,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/pegov/fluff/api"
 	"github.com/pegov/fluff/db"
+	"github.com/pegov/fluff/handler"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -53,11 +53,13 @@ func main() {
 
 	r := gin.Default()
 
-	r.GET("/api/links", api.GetAllLinks(repo))
-	r.POST("/api/links", api.CreateLink(repo))
+	r.GET("/api/links", handler.GetAllLinks(repo))
+	r.POST("/api/links", handler.CreateLink(repo))
 
-	r.GET("/api/links/:short", api.GetLink(repo))
-	r.DELETE("/api/links/:short", api.DeleteLink(repo))
+	r.GET("/api/links/:short", handler.GetLink(repo))
+	r.DELETE("/api/links/:short", handler.DeleteLink(repo))
+
+	r.GET("/:short", handler.RedirectToLink(repo))
 
 	r.Run(bindAddr)
 }
