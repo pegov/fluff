@@ -17,17 +17,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func main() {
-	host, ok := os.LookupEnv("HOST")
-	if !ok {
-		host = "0.0.0.0"
-	}
-	port, ok := os.LookupEnv("PORT")
-	if !ok {
-		port = "8080"
-	}
-	bindAddr := fmt.Sprintf("%v:%v", host, port)
-
+func SetupRouter() *gin.Engine {
 	pgxDb, err := sqlx.Connect("pgx", "postgres://postgres:postgres@127.0.0.1:5432/fluff")
 
 	if err != nil {
@@ -49,8 +39,6 @@ func main() {
 
 	repo := db.NewLinkRepo(pgxDb, rdb)
 
-	rand.Seed(time.Now().UnixNano())
-
 	r := gin.Default()
 
 	r.GET("/api/links", handler.GetAllLinks(repo))
@@ -60,6 +48,22 @@ func main() {
 	r.DELETE("/api/links/:short", handler.DeleteLink(repo))
 
 	r.GET("/:short", handler.RedirectToLink(repo))
+	return r
+}
 
+func main() {
+	host, ok := os.LookupEnv("HOST")
+	if !ok {
+		host = "0.0.0.0"
+	}
+	port, ok := os.LookupEnv("PORT")
+	if !ok {
+		port = "8080"
+	}
+	bindAddr := fmt.Sprintf("%v:%v", host, port)
+
+	rand.Seed(time.Now().UnixNano())
+
+	r := SetupRouter()
 	r.Run(bindAddr)
 }
